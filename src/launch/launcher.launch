@@ -1,0 +1,21 @@
+<launch>
+    <!-- Inicia el maestro de ROS -->
+    <master auto="start"/>
+    <param name="use_sim_time" value="false"/>
+
+    <!-- Carga el mundo simulado (maze.world) -->
+    <node pkg="stage_ros" type="stageros" name="stageros" args="$(find vision)/worlds/maze.world" respawn="false">
+        <param name="base_watchdog_timeout" value="0.2"/>
+    </node>
+
+    <!-- Cargar el mapa estático 
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find vision)/maps/map.yaml" output="screen"/>-->
+
+    <!-- Ejecuta el nodo vision.py -->
+    <node 
+        name="vision_node" 
+        pkg="vision" 
+        type="vision.py" 
+        output="screen">
+    </node>
+</launch>

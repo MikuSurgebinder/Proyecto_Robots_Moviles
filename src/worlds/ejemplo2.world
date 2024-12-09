@@ -1,0 +1,68 @@
+
+
+define topurg ranger
+(
+  sensor (
+    range [ 0 30 ]
+    fov 180
+    samples 1081
+    #fov 45
+    #samples 240
+    # generic model properties
+    color "red"
+    size [ 0.15 0.15 0.1 ]
+  )
+)
+
+define erratic position
+(
+  size [0.350 0.350 0.300]
+  origin [0.000 0.000 0.000 0.000]
+  gui_nose 1
+  drive "diff"
+  #si no se pone nada, o se pone "gps", tendría acceso al ground truth
+  localization "odom"
+  odom_error [0.0 0.0 0.0 0.0] 
+  #por defecto los modelos hijos se apilan en z, este estará en z = 0.3 + 0.05
+  topurg(pose [ 0.050 0.050 0.050 0.000 ])
+)
+
+define floorplan model
+(
+  # sombre, sensible, artistic
+  color "gray30"
+
+  # most maps will need a bounding box
+  boundary 1
+
+  gui_nose 0
+  gui_grid 0
+  gui_move 0
+
+  gui_outline 0
+  gripper_return 0
+  fiducial_return 0
+  #laser_return 1
+)
+
+# set the resolution of the underlying raytrace model in meters
+resolution 0.02
+
+interval_sim 100  # simulation timestep in milliseconds
+
+
+window
+( 
+  size [ 1000 638 ] 
+  scale 30.000
+)
+
+# load an environment bitmap
+floorplan
+( 
+  name "plano"
+  bitmap "mundo2.png"
+  size [30.000 15.000 1.000]
+)
+
+erratic( pose [ 8.777 -6.192 0.000 92.865 ] name "robotito" color "yellow")
