@@ -38,6 +38,4 @@ floorplan
 
 
 erratic( pose [ 5 4 0 180.000 ] name "era" color "blue")
-block( pose [3 1 0 0])
-block( pose [5 7 0 0])
-block( pose [9 9 0 0])
+block( pose [3 1 0 0] color "yellow")
