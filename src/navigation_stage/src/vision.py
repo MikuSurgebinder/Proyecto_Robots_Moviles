@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+
 # Librerías a usar
 import rospy, cv2, cv_bridge
 import numpy as np
