@@ -4,7 +4,7 @@
 # In total: 6 position buttons + 1 instruction button. The postition ones recognise short/long presses
 
 #TO IMPLEMENT: WHEN PRESSED REAL B0&B1 SIMMULTANEOUSLY, switch bool "WAIT" - - - WE NEED THE REAL TOPICS
-
+    # we have to make sure that this text change is syncronized with the real and the digitals
 
 
 # TO IMPLEMENT NOW: CREAR TOPIC PARA LA INTERFAZ, donde pasar los nombres y tal de los botones y su estado
