@@ -1,4 +1,9 @@
-
+define block model
+(
+  size [0.5 0.5 0.5]
+  gui_nose 0
+  color "yellow"
+)
 
 define topurg ranger
 (
@@ -25,6 +30,7 @@ define erratic position
   odom_error [0.0 0.0 0.0 0.0] 
   #por defecto los modelos hijos se apilan en z, este estará en z = 0.3 + 0.05
   topurg(pose [ 0.050 0.050 0.050 0.000 ])
+  mycamera(pose [ 0 0 0 90.0 ])
 )
 
 define floorplan model
@@ -65,4 +71,15 @@ floorplan
   size [30.000 15.000 1.000]
 )
 
-erratic( pose [ 8.777 -6.192 0.000 92.865 ] name "robotito" color "yellow")
+define mycamera camera
+(
+	range [ 0.2 8.0 ]
+	resolution [ 640 480 ]
+	fov [ 60 49.5 ]
+	pantilt [ 0 0 ]
+	alwayson 1
+)
+
+erratic( pose [ 8.777 -6.192 0.000 92.865 ] name "robotito" color "blue")
+block( pose [9.27 -4.4 0 0])
+

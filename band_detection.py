@@ -75,7 +75,6 @@ while True:
         center_y = y + h // 2
         # Dibujar el punto medio en la imagen
         cv2.circle(yellow_banda, (center_x, center_y), 5, (0, 0, 255), -1)
-        print('Area: ',area, 'x: ',x,'y: ',y)
 
     # Mostrar el resultado
     cv2.imshow('Banda Amarilla Detectada', yellow_banda)
