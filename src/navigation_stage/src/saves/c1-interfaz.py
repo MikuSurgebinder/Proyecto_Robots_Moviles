@@ -3,34 +3,12 @@
 # We have 3 real buttons, which can also be actuated by the interface. Plus 3 digital only. And we added one button to toggle "Wait/Follow command"
 # In total: 6 position buttons + 1 instruction button. The postition ones recognise short/long presses
 
-#TO IMPLEMENT: WHEN PRESSED REAL B0&B1 SIMMULTANEOUSLY, switch bool "WAIT" - - - WE NEED THE REAL TOPICS
-    # we have to make sure that this text change is syncronized with the real and the digitals
+#TO IMPLEMENT: WHEN PRESSED REAL B0&B1 SIMMULTANEOUSLY, switch bool "WAIT"
 
-
-# TO IMPLEMENT NOW: CREAR TOPIC PARA LA INTERFAZ, donde pasar los nombres y tal de los botones y su estado
-
-
-
-#rostopic echo /mobile_base/events/bumper
-
-"""
-bumper: 1
-state: 0
----
-bumper: 1
-state: 1
----
-bumper: 1
-state: 0
----
-"""
-
-
-# TOPICS
 import rospy
 import tkinter as tk
 from time import time
-from std_msgs.msg import Bool, String
+from std_msgs.msg import Bool
 from geometry_msgs.msg import Pose
 from threading import Thread
 
@@ -46,7 +24,6 @@ previous_press = {'B0': None, 'B1': None, 'B2': None,
 actual_press = {'B0': None, 'B1': None, 'B2': None, 
                 'D3': None, 'D4': None, 'D5': None,
                   'WAIT': None} 
-
 previous_time = time()
 #current_time = time() #we'll innitialize this one when needed
 
@@ -55,8 +32,6 @@ LONG_PRESS_THRESHOLD = 2.0  # seconds
 
 # Font configuration
 font = ('Comic Sans MS', 12)  # Font for all buttons
-
-
 
 def create_ros_subscribers(button_widgets):
     rospy.Subscriber("/button_B0", Bool, lambda data: button_callback(data, "B0", button_widgets)) # For the real buttons, not just the interface
@@ -83,13 +58,11 @@ def button_callback(data, button_name, button_widgets):
             rospy.loginfo(f"Button {button_name} released. Press duration: {press_duration:.2f} seconds")
 
             if press_duration >= LONG_PRESS_THRESHOLD:
-                # rospy.loginfo(f"Long press detected for {button_name}")
-                # publish button_name and long                #---------------------------------------------------------*******************
+                rospy.loginfo(f"Long press detected for {button_name}")
                 # Save current robot position if long press
                 save_position(button_name)
             else:
-                rospy.loginfo(f"Short press detected for {button_name}") # comment this later
-                # publish button_name and long                #---------------------------------------------------------*******************
+                rospy.loginfo(f"Short press detected for {button_name}")
 
             # Reset button color to default
             button_widgets[button_name].config(bg='green')
@@ -116,8 +89,6 @@ def create_ros_subscribers(button_widgets):
     rospy.Subscriber("/button_B0", Bool, button_callback, "B0", button_widgets)
     rospy.Subscriber("/button_B1", Bool, button_callback, "B1", button_widgets)
     rospy.Subscriber("/button_B2", Bool, button_callback, "B2", button_widgets)
-    
-
 
 def digital_button_click(button_name):
     # This simulates a click for digital buttons D3, D4, D5 in the GUI
@@ -127,15 +98,12 @@ def digital_button_click(button_name):
     else:
         rospy.logwarn(f"No saved position for {button_name}")
 
-#-------------------------------------------------------------------------------------------------------------- I N T E R F A C E --------#
+#----------------------------------------------------------------------------------------------------------- I N T E R F A C E
 # GUI using Tkinter to simulate D3, D4, D5 buttons and display real buttons
 def create_gui():
     # Create Tkinter window
     root = tk.Tk()
     root.title("Turtlebot2 Control Interface")
-
-    # Publishers
-    pub_buttons = rospy.Publisher("/button_communication", String, queue_size=10)
 
     # Dictionary to store button press times
     button_press_times = {
@@ -152,20 +120,14 @@ def create_gui():
     def handle_button_release(button_name): #-------------------------------------------------add return to get variable if it was long/short press
         if button_press_times[button_name] is not None:
             press_duration = time() - button_press_times[button_name]
-            #rospy.loginfo(f"Button {button_name} released after {press_duration:.2f} seconds")
+            rospy.loginfo(f"Button {button_name} released after {press_duration:.2f} seconds")
 
             if press_duration >= LONG_PRESS_THRESHOLD:
-                #rospy.loginfo(f"Long press detected for {button_name}")
-                #   publish button name and long            #---------------------------------------------------------*******************
+                rospy.loginfo(f"Long press detected for {button_name}")
                 save_position(button_name)
-                out = button_name + ", long"
-                pub_buttons.publish(out)
             else:
-                #rospy.loginfo(f"Short press detected for {button_name}")
-                #   publish button name and short           #---------------------------------------------------------*******************
+                rospy.loginfo(f"Short press detected for {button_name}")
                 digital_button_click(button_name)
-                out = button_name + ", short"
-                pub_buttons.publish(out)
 
             button_press_times[button_name] = None  # Reset press time
 
@@ -192,7 +154,6 @@ def create_gui():
             self.color = color
             self.text = text
             self.button_name = button_name
-            self.canvas = canvas
 
             # Draw a rectangle
             self.button = canvas.create_rectangle(x, y, x+w, y+h, fill=color, outline="black", width=2)
@@ -201,21 +162,20 @@ def create_gui():
             self.label = canvas.create_text(x+w/2, y+h/2, text=self.text, font=("Comic Sans MS", 14, "bold"), fill="black")
 
             # Bind press and release events to the circle
-            self.canvas.tag_bind(self.button, "<ButtonPress>", lambda event: handle_button_press(button_name))
-            self.canvas.tag_bind(self.button, "<ButtonRelease>", lambda event: handle_button_release(button_name))
-            self.canvas.tag_bind(self.label, "<ButtonPress>", lambda event: handle_button_press(button_name))
-            self.canvas.tag_bind(self.label, "<ButtonRelease>", lambda event: handle_button_release(button_name))
+            canvas.tag_bind(self.button, "<ButtonPress>", lambda event: handle_button_press(button_name))
+            canvas.tag_bind(self.button, "<ButtonRelease>", lambda event: handle_button_release(button_name))
+            canvas.tag_bind(self.label, "<ButtonPress>", lambda event: handle_button_press(button_name))
+            canvas.tag_bind(self.label, "<ButtonRelease>", lambda event: handle_button_release(button_name))
         
-        def change_rectangle_button(self, text=None, color=None):
-            # Update text if provided
-            if text:
-                self.text = text
-                self.canvas.itemconfig(self.label, text=self.text)  # Update existing text label
+        def change_rectangle_button(self, text):
+            self.text = text
+            self.label = canvas.create_text(self.x+self.w/2, self.y+self.h/2, text=self.text, font=("Comic Sans MS", 14, "bold"), fill="black")
 
-            # Update color if provided
-            if color:
-                self.color = color
-                self.canvas.itemconfig(self.button, fill=self.color)  # Update rectangle color
+            # Bind press and release events to the circle
+            canvas.tag_bind(self.button, "<ButtonPress>", lambda event: handle_button_press(self.button_name))
+            canvas.tag_bind(self.button, "<ButtonRelease>", lambda event: handle_button_release(self.button_name))
+            canvas.tag_bind(self.label, "<ButtonPress>", lambda event: handle_button_press(self.button_name))
+            canvas.tag_bind(self.label, "<ButtonRelease>", lambda event: handle_button_release(self.button_name))
 
 
     # Main canvas to hold circular buttons and labels
@@ -236,10 +196,10 @@ def create_gui():
     create_circle_button(canvas, x=250, y=220, r=40, color="cyan", text="D4", button_name='D4')
     create_circle_button(canvas, x=250, y=320, r=40, color="cyan", text="D5", button_name='D5')
 
-    # Create digital button WAIT                           #---------------------------------------------------------*******************
+    # Create digital button WAIT
     wait_button = Rectangle_button(canvas, x=80, y=390, w=190, h=40, color="green", text="WAIT", button_name='WAIT')
-    #rospy.sleep(2)
-    #wait_button.change_rectangle_button(text="Follow", color="green")
+    rospy.sleep(2)
+    wait_button.change_rectangle_button(" fffffffffff  ")
 
     # Run the Tkinter event loop
     root.mainloop()
@@ -257,9 +217,21 @@ def main():
 
     while not rospy.is_shutdown():
         rospy.sleep(1)
-        # ADD HERE TWO BUTTONS LOGIC FOR WAIT/FOLLOW IT HAS TO BE W/ REAL BUTTONS     #----------------------------------------*******************
-        # Register status of both buttons and if coinciden pum
+        """
+        #detectar pulsado y soltado con tiempo-data
+            #pulsado: just pressed right now (was up)-> compare minimum to avoid rebotes times and save actual
+            #not pulsado: when released, meassure how much time it was pressed
+        if (pulsado and time.time() - tiempo-previo > 0.1): #up
+            guaradar tiempo actual
+
+        if (not pulsado and tiempo-actual - tiempo-previo > 0.1): #down
+            if(tiempo-actual - tiempo-previo > LONG_PRESS_THRESHOLD and pulsado):
+                true largo -> guardar posicion
+            else:
+                true corto, asi que voy
+         """
 
 if __name__ == "__main__":
+
     main()
     rospy.sleep(1)
