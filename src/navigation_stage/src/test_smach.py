@@ -5,11 +5,10 @@ import smach_ros
 import math
 from smach import State,StateMachine
 from time import sleep
-from volver_origen import Moverse
-from vision import TurtleCamProcessor
-from std_msgs.msg import String
+from turtlebot_band_detection import TurtleCamProcessor
+from std_msgs.msg import String, Int32MultiArray
 
-from handyFunctions import split_input,get_localization
+from handyFunctions import split_input,get_localization, moverse
 
 """
 #Topics a usar en suscripciones y publicaciones
@@ -23,18 +22,22 @@ ANG_IZQ = 30*math.pi/180.0
 ANG_DER = -ANG_IZQ
 """
 
+#Para almacenar los datos recibidos de la interfaz, guarda si es una pulsacion larga o corta
+#Una vez se ejecuta la accion, se reinicia a None
 saved_buttons = {
     'B0': None, 'B1': None, 'B2': None,  # Physical buttons
     'D3': None, 'D4': None, 'D5': None,   # Digital buttons
     'WAIT': None
 }
+#Para poder trabajar más cómodamente entre estados
+current_button = ''
 
 
-
-
-position=[] #Esturcura de posicion: es un vector con 6 posiciones almacenadas:
-             #Cada posicion contiene una matriz, una fila con 3 coord de posicion (x,y,z)
-             #y otra con 4 coord de orientacion (x,y,z,w)
+#Almacena las poses a las que se le puede pedir ir al robot
+position = {
+    'B0': None, 'B1': None, 'B2': None,  # Physical buttons
+    'D3': None, 'D4': None, 'D5': None,   # Digital buttons
+}
 
 
 class Static(State):
@@ -42,60 +45,88 @@ class Static(State):
         State.__init__(self, outcomes=['buttonPressed','followPerson','mapping'])
     
     def execute(self, userdata):
+        global current_button
         #Velocidad=0 y pub
 
         print("Estado parado")
-        while True:
+        while not rospy.is_shutdown():
+            #Boton de follow
             if saved_buttons['WAIT'] is not None:
                 saved_buttons['WAIT']=None
                 return 'followPerson'
-            """
-            if 'echo en callback de boton'==True: 
+            
+            #Botones de pose
+            elif saved_buttons['B0'] is not None: 
+                current_button = 'B0'
                 return 'buttonPressed'
-            if 'echo en callback de seguimiento'==True:
-                return 'followPerson'
+            elif saved_buttons['B1'] is not None: 
+                current_button = 'B1'
+                return 'buttonPressed'
+            elif saved_buttons['B2'] is not None: 
+                current_button = 'B2'
+                return 'buttonPressed'
+            elif saved_buttons['D3'] is not None: 
+                current_button = 'D3'
+                return 'buttonPressed'
+            elif saved_buttons['D4'] is not None: 
+                current_button = 'D4'
+                return 'buttonPressed'
+            elif saved_buttons['D5'] is not None: 
+                current_button = 'D5'
+                return 'buttonPressed'
+                
+            """
             if 'echo en callback de mapeado'==True:
                 return 'mapping'
             """
-class Button(State):
+
+
+class Button(State): #Funcion para guardar/ir a posición guardada
     def __init__(self):
         State.__init__(self, outcomes=['success'])
     
     def execute(self, userdata):
-        for i in range(len(saved_buttons)-1):
-            if saved_buttons[i]== 'long':
-                position[i] = get_localization() #Crear handyFunciones e importarlo
-            if saved_buttons[i]== 'short':
-                Moverse(position[i])
-    
+        global current_button
+        print("BOTON pulsado  " + current_button + "  " + saved_buttons[current_button])
+        #Almacena
+        if saved_buttons[current_button]== 'long':
+            position[current_button] = get_localization() #Coge la pose del odom y la almacena
+        #Se mueve
+        elif saved_buttons[current_button]== 'short' and position[current_button] is not None:
+            moverse(position[current_button])
+        elif position[current_button] is None:
+            rospy.loginfo("No hay una pose asociada a este botón")
+        saved_buttons[current_button] = None
+        current_button = ''
         return 'success'
         
 
 
 
-class Follow(State): #Segundo estado de la maquina
+class Follow(State): #Boton de WAIT pulsado
     def __init__(self):
         State.__init__(self, outcomes=['success'])
     
     def execute(self, userdata):
         bandera = False
-        processor = TurtleCamProcessor()
-        rospy.sleep(0.1)
+        #processor = TurtleCamProcessor()
+        #rospy.sleep(0.1)
         print("Estado camara seguimiento")
-        try:
-            rate = rospy.Rate(10)  # Procesa frames a 10 Hz
-            while not rospy.is_shutdown():
-                processor.process_frame()
-                dir = [processor.area,processor.x_coord,processor.y_coord]
-                print(dir)
-                rate.sleep()
-                if saved_buttons['WAIT'] is not None:
-                    saved_buttons['WAIT']=None
-                    bandera=True
-        except bandera: #rospy.ROSInterruptException or 
-            pass
-        finally:
-            processor.cleanup()
+
+        def callback_seguimiento(msg):
+            [area, dist_x, dist_y] = msg
+            #Añadir algoritmo de movimiento con esquiva
+            seguimiento_sub.unregister()
+
+        seguimiento_sub = rospy.Subscriber('/color_detected', Int32MultiArray, callback_seguimiento) #Robot simulado
+        rate = rospy.Rate(10)  # Procesa frames a 10 Hz
+        
+        while not rospy.is_shutdown() and not bandera:
+            #processor.process_frame()
+            
+            if saved_buttons['WAIT'] is not None:
+                saved_buttons['WAIT']=None
+                bandera=True
         return 'success'
 
 
