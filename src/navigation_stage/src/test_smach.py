@@ -30,11 +30,14 @@ saved_buttons = {
 }
 
 
-
-
-position=[] #Esturcura de posicion: es un vector con 6 posiciones almacenadas:
+position = {
+    'B0': None, 'B1': None, 'B2': None,  # Physical buttons
+    'D3': None, 'D4': None, 'D5': None,   # Digital buttons
+}
+ #Esturcura de posicion: es un vector con 6 posiciones almacenadas:
              #Cada posicion contiene una matriz, una fila con 3 coord de posicion (x,y,z)
              #y otra con 4 coord de orientacion (x,y,z,w)
+
 
 
 class Static(State):
@@ -46,27 +49,42 @@ class Static(State):
 
         print("Estado parado")
         while True:
+            #print(saved_buttons)
             if saved_buttons['WAIT'] is not None:
+
                 saved_buttons['WAIT']=None
                 return 'followPerson'
-            """
-            if 'echo en callback de boton'==True: 
+        
+            if saved_buttons['B0'] is not None or saved_buttons['B1'] is not None or saved_buttons['B2'] is not None or saved_buttons['D3'] is not None or saved_buttons['D4'] is not None or saved_buttons['D5'] is not None: 
                 return 'buttonPressed'
-            if 'echo en callback de seguimiento'==True:
-                return 'followPerson'
+            
+            """
             if 'echo en callback de mapeado'==True:
                 return 'mapping'
             """
+
+
+
+
 class Button(State):
     def __init__(self):
         State.__init__(self, outcomes=['success'])
     
     def execute(self, userdata):
-        for i in range(len(saved_buttons)-1):
+        global saved_buttons   
+        for i in saved_buttons:
+            print(saved_buttons)
             if saved_buttons[i]== 'long':
+                saved_buttons[i] = None
+                print(saved_buttons)
                 position[i] = get_localization() #Crear handyFunciones e importarlo
-            if saved_buttons[i]== 'short':
+                break
+            elif saved_buttons[i]== 'short':
+                saved_buttons[i] = None
                 Moverse(position[i])
+                break
+        
+
     
         return 'success'
         
@@ -78,24 +96,13 @@ class Follow(State): #Segundo estado de la maquina
         State.__init__(self, outcomes=['success'])
     
     def execute(self, userdata):
-        bandera = False
-        processor = TurtleCamProcessor()
-        rospy.sleep(0.1)
+        pub = rospy.Publisher("/camera_onoff", String, queue_size=5)
         print("Estado camara seguimiento")
-        try:
-            rate = rospy.Rate(10)  # Procesa frames a 10 Hz
-            while not rospy.is_shutdown():
-                processor.process_frame()
-                dir = [processor.area,processor.x_coord,processor.y_coord]
-                print(dir)
-                rate.sleep()
-                if saved_buttons['WAIT'] is not None:
-                    saved_buttons['WAIT']=None
-                    bandera=True
-        except bandera: #rospy.ROSInterruptException or 
-            pass
-        finally:
-            processor.cleanup()
+        pub.publish("suscribe")
+        while saved_buttons['WAIT'] is None:
+            sleep(0.1)
+        saved_buttons['WAIT'] = None    
+        pub.publish("desuscribe")
         return 'success'
 
 

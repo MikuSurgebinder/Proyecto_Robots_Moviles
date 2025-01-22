@@ -1,4 +1,7 @@
+import rospy
 from geometry_msgs.msg import Pose
+from nav_msgs.msg import Odometry
+
 
 def split_input(input_str):
     # Split the input string by comma
@@ -10,9 +13,13 @@ def split_input(input_str):
     else:
         raise ValueError("Input string must contain exactly one comma")
     
+def get_pose_callback(data,pose):
+    pose=data.pose
+    return pose
 
 def get_localization():
-    pose = Pose()
-    #Suscribir al topic del robot, pillarlo, ponerlo en pose y desub
-
+    pose=[]
+    sub_location = rospy.Subscriber("/odom", Odometry, lambda data: get_pose_callback(data,pose))
+    rospy.sleep(0.01)
+    sub_location.unregister()
     return pose
