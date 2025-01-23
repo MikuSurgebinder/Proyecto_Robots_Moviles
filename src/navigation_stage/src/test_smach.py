@@ -8,6 +8,7 @@ from time import sleep
 from turtlebot_band_detection import TurtleCamProcessor
 from std_msgs.msg import String, Int32MultiArray
 
+from practica3_base import FollowYellowAndEvade
 from handyFunctions import split_input,get_localization, moverse
 
 """
@@ -87,7 +88,7 @@ class Button(State): #Funcion para guardar/ir a posición guardada
     
     def execute(self, userdata):
         global current_button
-        print("BOTON pulsado  " + current_button + "  " + saved_buttons[current_button])
+        print("Boton " + current_button + " pulsado " + saved_buttons[current_button])
         #Almacena
         if saved_buttons[current_button]== 'long':
             position[current_button] = get_localization() #Coge la pose del odom y la almacena
@@ -104,21 +105,28 @@ class Button(State): #Funcion para guardar/ir a posición guardada
 
 
 class Follow(State): #Boton de WAIT pulsado
-    def __init__(self):
+    def __init__(self,camera_on_pub):
         State.__init__(self, outcomes=['success'])
+        self.camera_on_pub = camera_on_pub
     
     def execute(self, userdata):
         bandera = False
+        self.camera_on_pub.publish("suscribe")
         #processor = TurtleCamProcessor()
         #rospy.sleep(0.1)
         print("Estado camara seguimiento")
+        control_robot = FollowYellowAndEvade()
+        control_robot.navig()
 
+        """
         def callback_seguimiento(msg):
-            [area, dist_x, dist_y] = msg
+            print(msg.data)
+            [control_robot.area, control_robot.dist_x, control_robot.dist_y] = msg.data
             #Añadir algoritmo de movimiento con esquiva
-            seguimiento_sub.unregister()
-
+            
         seguimiento_sub = rospy.Subscriber('/color_detected', Int32MultiArray, callback_seguimiento) #Robot simulado
+        """
+
         rate = rospy.Rate(10)  # Procesa frames a 10 Hz
         
         while not rospy.is_shutdown() and not bandera:
@@ -127,6 +135,10 @@ class Follow(State): #Boton de WAIT pulsado
             if saved_buttons['WAIT'] is not None:
                 saved_buttons['WAIT']=None
                 bandera=True
+        #seguimiento_sub.unregister()
+        self.camera_on_pub.publish("desuscribe")
+        control_robot.close()
+
         return 'success'
 
 
@@ -160,13 +172,15 @@ if __name__ == '__main__':
     #Callback de la interfaz y de los botones reales
     subColor = rospy.Subscriber("/button_communication", String , callback_button)
 
+    #AÑADIR: suscriber para enviar mensajes a la camara y que se encienda/apague
+    camera_on_pub = rospy.Publisher("/camera_onoff",String)
 
     #Maquina de estados
     sm = StateMachine(outcomes=['stop'])
     with sm:
         StateMachine.add('WaitingForOrders', Static(), transitions={'buttonPressed':'ButtonCommand','followPerson':'FollowCommand','mapping':'MapCommand'})
         StateMachine.add('ButtonCommand', Button(), transitions={'success':'WaitingForOrders'})
-        StateMachine.add('FollowCommand', Follow(), transitions={'success':'WaitingForOrders'})
+        StateMachine.add('FollowCommand', Follow(camera_on_pub), transitions={'success':'WaitingForOrders'})
         StateMachine.add('MapCommand', Map(), transitions={'success':'WaitingForOrders'})
     
     #"sis" solo sirve para mostrar una representación gráfica de la máquina de estados    

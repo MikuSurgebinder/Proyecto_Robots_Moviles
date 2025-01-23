@@ -33,8 +33,6 @@ def get_localization():
     return pose
 
 def moverse(w):
-    a = Pose()
-    a.orientation.w
     client = actionlib.SimpleActionClient('move_base',MoveBaseAction) #Ejecutar la accion de nav. para luego recibir coordenadas
     client.wait_for_server()
 

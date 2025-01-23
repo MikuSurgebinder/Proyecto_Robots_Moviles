@@ -8,7 +8,7 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import Int32MultiArray, String
 
 AREA_MAXIMA = 50000
-AREA_MINIMA = 100
+AREA_MINIMA = 50
 camera_st=False
 X_VENTANA=640
 Y_VENTANA=480
