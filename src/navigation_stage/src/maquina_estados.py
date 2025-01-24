@@ -5,7 +5,6 @@ import smach_ros
 import math
 from smach import State,StateMachine
 from time import sleep
-from turtlebot_band_detection import TurtleCamProcessor
 from std_msgs.msg import String, Int32MultiArray
 
 from practica3_base import FollowYellowAndEvade
@@ -34,21 +33,11 @@ saved_buttons = {
 current_button = ''
 
 
-<<<<<<< HEAD:src/navigation_stage/src/maquina_estados.py
-=======
 #Almacena las poses a las que se le puede pedir ir al robot
->>>>>>> 91f3c6f3439f0cbca12fdd03051b3b1277066f36:src/navigation_stage/src/test_smach.py
 position = {
     'B0': None, 'B1': None, 'B2': None,  # Physical buttons
     'D3': None, 'D4': None, 'D5': None,   # Digital buttons
 }
-<<<<<<< HEAD:src/navigation_stage/src/maquina_estados.py
- #Esturcura de posicion: es un vector con 6 posiciones almacenadas:
-             #Cada posicion contiene una matriz, una fila con 3 coord de posicion (x,y,z)
-             #y otra con 4 coord de orientacion (x,y,z,w)
-=======
->>>>>>> 91f3c6f3439f0cbca12fdd03051b3b1277066f36:src/navigation_stage/src/test_smach.py
-
 
 
 class Static(State):
@@ -60,23 +49,11 @@ class Static(State):
         #Velocidad=0 y pub
 
         print("Estado parado")
-<<<<<<< HEAD:src/navigation_stage/src/maquina_estados.py
-        while True:
-            #print(saved_buttons)
-=======
         while not rospy.is_shutdown():
             #Boton de follow
->>>>>>> 91f3c6f3439f0cbca12fdd03051b3b1277066f36:src/navigation_stage/src/test_smach.py
             if saved_buttons['WAIT'] is not None:
-
                 saved_buttons['WAIT']=None
                 return 'followPerson'
-<<<<<<< HEAD:src/navigation_stage/src/maquina_estados.py
-        
-            if saved_buttons['B0'] is not None or saved_buttons['B1'] is not None or saved_buttons['B2'] is not None or saved_buttons['D3'] is not None or saved_buttons['D4'] is not None or saved_buttons['D5'] is not None: 
-                return 'buttonPressed'
-            
-=======
             
             #Botones de pose
             elif saved_buttons['B0'] is not None: 
@@ -98,41 +75,17 @@ class Static(State):
                 current_button = 'D5'
                 return 'buttonPressed'
                 
->>>>>>> 91f3c6f3439f0cbca12fdd03051b3b1277066f36:src/navigation_stage/src/test_smach.py
             """
             if 'echo en callback de mapeado'==True:
                 return 'mapping'
             """
 
 
-<<<<<<< HEAD:src/navigation_stage/src/maquina_estados.py
-
-
-class Button(State):
-=======
 class Button(State): #Funcion para guardar/ir a posición guardada
->>>>>>> 91f3c6f3439f0cbca12fdd03051b3b1277066f36:src/navigation_stage/src/test_smach.py
     def __init__(self):
         State.__init__(self, outcomes=['success'])
     
     def execute(self, userdata):
-<<<<<<< HEAD:src/navigation_stage/src/maquina_estados.py
-        global saved_buttons   
-        for i in saved_buttons:
-            print(saved_buttons)
-            if saved_buttons[i]== 'long':
-                saved_buttons[i] = None
-                print(saved_buttons)
-                position[i] = get_localization() #Crear handyFunciones e importarlo
-                break
-            elif saved_buttons[i]== 'short':
-                saved_buttons[i] = None
-                Moverse(position[i])
-                break
-        
-
-    
-=======
         global current_button
         print("Boton " + current_button + " pulsado " + saved_buttons[current_button])
         #Almacena
@@ -145,7 +98,6 @@ class Button(State): #Funcion para guardar/ir a posición guardada
             rospy.loginfo("No hay una pose asociada a este botón")
         saved_buttons[current_button] = None
         current_button = ''
->>>>>>> 91f3c6f3439f0cbca12fdd03051b3b1277066f36:src/navigation_stage/src/test_smach.py
         return 'success'
         
 
@@ -157,15 +109,6 @@ class Follow(State): #Boton de WAIT pulsado
         self.camera_on_pub = camera_on_pub
     
     def execute(self, userdata):
-<<<<<<< HEAD:src/navigation_stage/src/maquina_estados.py
-        pub = rospy.Publisher("/camera_onoff", String, queue_size=5)
-        print("Estado camara seguimiento")
-        pub.publish("suscribe")
-        while saved_buttons['WAIT'] is None:
-            sleep(0.1)
-        saved_buttons['WAIT'] = None    
-        pub.publish("desuscribe")
-=======
         bandera = False
         self.camera_on_pub.publish("suscribe")
         #processor = TurtleCamProcessor()
@@ -195,7 +138,6 @@ class Follow(State): #Boton de WAIT pulsado
         self.camera_on_pub.publish("desuscribe")
         control_robot.close()
 
->>>>>>> 91f3c6f3439f0cbca12fdd03051b3b1277066f36:src/navigation_stage/src/test_smach.py
         return 'success'
 
 
@@ -231,6 +173,7 @@ if __name__ == '__main__':
 
     #AÑADIR: suscriber para enviar mensajes a la camara y que se encienda/apague
     camera_on_pub = rospy.Publisher("/camera_onoff",String)
+    camera_on_pub.publish("desuscribe")
 
     #Maquina de estados
     sm = StateMachine(outcomes=['stop'])

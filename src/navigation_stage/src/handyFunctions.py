@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-import rospy
-from geometry_msgs.msg import Pose
-from nav_msgs.msg import Odometry
-=======
 # Librerías a usar
 import rospy, cv2, cv_bridge
 import numpy as np
@@ -12,7 +7,6 @@ from sensor_msgs.msg import Image
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
 pose = Pose()
->>>>>>> 91f3c6f3439f0cbca12fdd03051b3b1277066f36
 
 
 def split_input(input_str):
@@ -25,18 +19,9 @@ def split_input(input_str):
     else:
         raise ValueError("Input string must contain exactly one comma")
     
-def get_pose_callback(data,pose):
-    pose=data.pose
-    return pose
 
 #Suscribir al topic del robot una vez, pillarlo, ponerlo en pose y desub
 def get_localization():
-<<<<<<< HEAD
-    pose=[]
-    sub_location = rospy.Subscriber("/odom", Odometry, lambda data: get_pose_callback(data,pose))
-    rospy.sleep(0.01)
-    sub_location.unregister()
-=======
     global pose
     def callback_get_loc(msg):
         global pose
@@ -45,7 +30,6 @@ def get_localization():
         odom_sub.unregister()
     odom_sub = rospy.Subscriber('/odom', Odometry, callback_get_loc) #Robot simulado
     rospy.sleep(0.0001)
->>>>>>> 91f3c6f3439f0cbca12fdd03051b3b1277066f36
     return pose
 
 def moverse(w):

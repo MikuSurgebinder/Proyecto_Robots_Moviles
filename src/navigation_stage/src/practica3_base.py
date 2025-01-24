@@ -9,7 +9,6 @@ from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import Int32MultiArray
 from geometry_msgs.msg import Twist
-from color_detector import ColorDetector
 
 TOPIC_VEL = "/cmd_vel"
 TOPIC_SCAN = '/base_scan'
@@ -31,7 +30,6 @@ class FollowYellowAndEvade(State):
         self.dist_fron = 1
     
     def navig(self):
-        cd  = ColorDetector() #iniciamos el color detector
         self.subScan = rospy.Subscriber(TOPIC_SCAN, LaserScan, self.laser_callback)
         self.seguimiento_sub = rospy.Subscriber('/color_detected', Int32MultiArray, self.callback_seguimiento) 
         rate = rospy.Rate(10)

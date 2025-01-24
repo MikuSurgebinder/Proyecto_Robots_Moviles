@@ -34,7 +34,7 @@ previous_time = time()
 #current_time = time() #we'll innitialize this one when needed
 
 # Constants
-LONG_PRESS_THRESHOLD = 2.0  # seconds
+LONG_PRESS_THRESHOLD = 1.0  # seconds
 
 # Font configuration
 font = ('Comic Sans MS', 12)  # Font for all buttons
