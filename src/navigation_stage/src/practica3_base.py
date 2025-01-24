@@ -5,104 +5,130 @@ import rospy
 import smach_ros
 import math
 from smach import State,StateMachine
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from sensor_msgs.msg import LaserScan
-from std_msgs.msg import Int32
+from std_msgs.msg import Int32MultiArray
 from geometry_msgs.msg import Twist
 from color_detector import ColorDetector
 
-#Topics a usar en suscripciones y publicaciones
 TOPIC_VEL = "/cmd_vel"
 TOPIC_SCAN = '/base_scan'
-TOPIC_COLOR = '/color_detected'
 
 
-#Nos fijamos en el ángulo a 30 y -30 grados, podéis cambiarlo si quereis.
-#Se ha añadido más adelante utilizar el haz frontal.
+#Nos fijamos en el ángulo a 30 y -30 grados, podéis cambiarlo si quereis
 ANG_IZQ = 30*math.pi/180.0
 ANG_DER = -ANG_IZQ
 
 
-#Primer estado de la maquina de estados
-class WanderAndDetect(State):
-
+class FollowYellowAndEvade(State):
     def __init__(self):
-        #State.__init__(self, outcomes=['color_detected']) #Como se acopla a la maquina principal, se desactivan cosas de la local
-        print('Empieza a deambular') #Ver que empiece para debuggear
-        State.__init__(self, outcomes=['success'])
-
-        cd  = ColorDetector() #Ejecutar el programa de detección de rojo, en color_detector.py
-        self.color_detected = False #Flag de finalización
-
-        self.pub = rospy.Publisher(TOPIC_VEL, Twist, queue_size=5) #Para publicar la velocidad en el callback
+        #State.__init__(self, outcomes=['color_detected'])
+        self.color_detected = False
+        self.pub = rospy.Publisher(TOPIC_VEL, Twist, queue_size=5)
+        self.area = 50000
+        self.dist_izq = 1
+        self.dist_der = 1
+        self.dist_fron = 1
     
-
-    def execute(self, userdata):
-        self.subScan = rospy.Subscriber(TOPIC_SCAN, LaserScan, self.laser_callback) #Inicializa los callbacks de laser y cámara
-        self.subColor = rospy.Subscriber(TOPIC_COLOR, Int32 , self.color_detected_calback)
+    def navig(self):
+        cd  = ColorDetector() #iniciamos el color detector
+        self.subScan = rospy.Subscriber(TOPIC_SCAN, LaserScan, self.laser_callback)
+        self.seguimiento_sub = rospy.Subscriber('/color_detected', Int32MultiArray, self.callback_seguimiento) 
         rate = rospy.Rate(10)
+        rate.sleep()
 
-        while not self.color_detected: #Entra en bucle de deambular hasta detectar rojo
-            rate.sleep()
-
-        #normalmente en un nodo de ROS convencional no nos desuscribimos
-        #porque se hace automáticamente al acabar el nodo, pero esto es un estado
-        #de la máquina de estados y mejor "limpiar" todo antes de saltar a otro estado
+        #return "color_detected" #cuando lo detecte directamente se cambia de estado 
         
-        
-        if self.color_detected:       #Si detecta rojo:
-            self.subScan.unregister() #Cancela los callbacks, deteniendo las acciones
-            self.subColor.unregister()
+    def laser_callback(self,msg):
+        #cuáles son los rayos de laser que nos interesan?
+        pos_izq = int((ANG_IZQ-msg.angle_min))#/msg.angle_increment)
+        pos_der = int((ANG_DER-msg.angle_min))#/msg.angle_increment) 
+        #FALTA: calcular la velocidad angular en z y lineal en x adecuadas a las distancias detectadas
+        self.dist_izq = min(msg.ranges[pos_izq],msg.ranges[len(msg.ranges)-1])
+        #print(pos_izq)
+        self.dist_der = min(msg.ranges[pos_der],msg.ranges[0])
+        self.dist_fron = msg.ranges[int(len(msg.ranges)/2)]
 
-        print("Termina deambular y va a casa")
-        return 'success' #Termina el estado y da paso al siguiente
-        
-    
-    def laser_callback(self, msg):
-        #Se ha añadido una lectura más justo en frente para evitar colisiones
-        pos_rec = int(len(msg.ranges)/2)
-        pos_izq = int((ANG_IZQ-msg.angle_min)/msg.angle_increment)
-        pos_der = int((ANG_DER-msg.angle_min)/msg.angle_increment) 
-        #print("Izq", msg.ranges[pos_izq], " Der: ", msg.ranges[pos_der]) #Test
-
-        #Guardamos valores de distancia para calcular velocidades optimas
-        dist_rec = msg.ranges[pos_rec]
-        dist_der = msg.ranges[pos_der]
-        dist_izq = msg.ranges[pos_izq]
-
-
-        #Creacion del mensaje para la determinar la velocidad (out)
+    def callback_seguimiento(self, msg):
+        [self.area, self.dist_x, self.dist_y] = msg.data
+        #print("Izq", self.dist_izq, " Der: ", self.dist_der)
         cmd = Twist()
-
-        #Algoritmo de movimiento de deambular/wandering
-        #cmd.linear.x= min([dist_rec,dist_der,dist_izq])*0.1-0.1 #Test
-        cmd.linear.x= dist_rec*0.1
-        cmd.angular.z=(dist_izq-dist_der)*0.13
-        if abs(dist_rec)<0.5:
-            cmd.linear.x = -0.5
-            cmd.angular.z = -1
         
-        #print("Avance", cmd.linear.x, " Giro: ", cmd.angular.z, " Espacio: " ,msg.ranges[pos_rec]) #Test
+        ########################################################################################
+        #Avanzamos en funcion de que distancia es mayor: Hay mas hueco izq, vamos para alla
+        #Con este planteamiento navega bien en general, sobre todo va en linea recta.
+        #Aunque hay que echarle una mano porque en ocasiones se lanza contra la pared o
+        #se queda encerrado en el cuadrado de salida estrecha.
 
-        self.pub.publish(cmd) #Publicar velocidad
+        #Variables para escapar de cajas con salidas estrechas, recordamos ultima pared.
+        #ult_izq= False
+        #ult_der = False
+        
+        #Distancia máxima para acercarse al obstáculo
+        dist_obst = 0.3
+        #Izq y derecha están lejos de una colision, da igual la cmd.angular
+        if self.dist_fron > dist_obst*3 and not(self.dist_izq < dist_obst or self.dist_izq < dist_obst):
+            if self.area >40000 :
+                cmd.linear.x = 0.0
+            else:
+                #velocidad proporcional a la distancia al seguimiento
+                cmd.linear.x = 20000/self.area
+        
+        cmd.angular.z = -self.dist_x*abs(self.dist_x)/10000 -self.dist_x/300
+        
+        """
+        if self.dist_izq < dist_obst:
+            cmd.angular.z = cmd.angular.z*2
+        elif self.dist_der > dist_obst:
+            cmd.angular.z = cmd.angular.z*2
+        """
+        """
+        #Detectamos a la izq, giramos derecha
+        elif dist_izq < dist_obst:
+            cmd.linear.x = 0.15
+            cmd.angular.z = -1.2
+            #ult_izq = True
+            #ult_der = False
+        #Detectamos a la der, giramos izquierda
+        elif dist_der < dist_obst:
+            cmd.linear.x = 0.15
+            cmd.angular.z = 1.2
+            #ult_izq = False
+            #ult_der = True
+        #Ambos detectan: se retrocede
+        else:
+            if(dist_izq < dist_obst):
+                cmd.linear.x = -0.7
+                cmd.angular.z = -0.8
+            if(dist_der < dist_obst):
+                cmd.linear.x = -0.7
+                cmd.angular.z = 0.8
+        if(dist_izq < 0.2 and dist_der < 0.2):
+            cmd.linear.x = -1.0
+            cmd.angular.z = 0.0
+        """
+        self.pub.publish(cmd)
 
-    def color_detected_calback(self, msg):
-        self.color_detected = True #Se publica en detectar rojo, levanta la bandera, parando el programa (Publicado en código color_detector.py)
+    def close(self):
+        self.seguimiento_sub.unregister()
+        self.subScan.unregister()
 
 
 
-
-if __name__ == '__main__': #Iniciar y ejecutar el estado/bucle hasta que cambie de estado, solo para debug
+"""
+#En el proyecto no hay que usar este main
+if __name__ == '__main__':
+    global rojo
     rospy.init_node("practica3")
-
-    #Maquina de estados local
     sm = StateMachine(outcomes=['end'])
     with sm:
         #en la versión final la transición deberá ser al estado "volver a la base"
         StateMachine.add('WanderAndDetect', WanderAndDetect(), 
            transitions={
-               'success':'end'})
+               'color_detected':'end'}) 
     
     sis = smach_ros.IntrospectionServer('server_name', sm, '/SM_ROOT')
     sis.start()
     sm.execute()
     rospy.spin()   
+"""
